@@ -134,8 +134,6 @@ module.exports = async (ctx, next) => {
                     pid: 'Return PID of this application.',
                     memwatch: 'Record gc count.',
                     report: 'Get human-readable diagnostic summary'
-                    // enable_aysnc_hook: 'Enable async hook.',
-                    // disable_async_hook: 'Disable async hook.'
                 };
                 break;
             case 'arch':

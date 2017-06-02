@@ -40,6 +40,7 @@ url: /perf/{key}
     "forcegc": "Manually excute gc.",
     "version": "Return an object describing the versions of node deps.",
     "pid": "Return PID of this application.",
-    "memwatch": "Record gc count."
+    "memwatch": "Record gc count.",
+    "report": "Get human-readable diagnostic summary"
 }
 ```
