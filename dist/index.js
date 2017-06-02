@@ -33,12 +33,13 @@ function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, a
  *   what has been allocated, and what has been released.
  */
 
-const trace = require('../build/Release/zan-trace');
-const memwatch = require('memwatch-next');
-const profiler = require('v8-profiler');
-const util = require('util');
-const fs = require('fs');
 const os = require('os');
+const fs = require('fs');
+const util = require('util');
+const profiler = require('v8-profiler');
+const nodereport = require('node-report');
+const memwatch = require('memwatch-next');
+const trace = require('../build/Release/zan-trace');
 const cwd = process.cwd();
 
 let gcstats = {};
@@ -136,9 +137,8 @@ module.exports = (() => {
                         forcegc: 'Manually excute gc.',
                         version: 'Return an object describing the versions of node deps.',
                         pid: 'Return PID of this application.',
-                        memwatch: 'Record gc count.'
-                        // enable_aysnc_hook: 'Enable async hook.',
-                        // disable_async_hook: 'Disable async hook.'
+                        memwatch: 'Record gc count.',
+                        report: 'Get human-readable diagnostic summary'
                     };
                     break;
                 case 'arch':
@@ -219,6 +219,9 @@ module.exports = (() => {
                         minHeapUsage: gcstats.min,
                         maxHeapUsage: gcstats.max
                     };
+                    break;
+                case 'report':
+                    perf = nodereport.getReport();
                     break;
                 case 'test':
                     fs.access(__filename, function () {
