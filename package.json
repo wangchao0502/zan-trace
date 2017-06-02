@@ -1,6 +1,6 @@
 {
   "name": "zan-trace",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "dist/index.js",
   "scripts": {
     "postinstall": "babel src -d dist",
@@ -16,11 +16,15 @@
   "dependencies": {
     "memwatch-next": "~0.3.0",
     "node-gyp": "~3.6.1",
+    "node-report": "~2.2.0",
     "v8-profiler": "~5.7.0"
   },
   "devDependencies": {
     "babel-cli": "~6.24.1",
     "babel-preset-env": "~1.4.0",
     "babel-register": "~6.24.1"
+  },
+  "engines": {
+    "node": ">= 6.10.0"
   }
 }

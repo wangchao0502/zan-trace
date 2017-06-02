@@ -1,6 +1,21 @@
 # zan-trace
 koa middleware, expose api for collecting node runtime info.
 
+## install
+
+```bash
+npm install --save zan-trace
+```
+
+```javascript
+const Koa = require('koa');
+const trace = require('zan-trace');
+const app = new Koa();
+
+app.use(trace);
+app.listen(3000);
+```
+
 ## API
 
 url: /perf/{key}
