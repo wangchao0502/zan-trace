@@ -1,9 +1,9 @@
 {
   "name": "zan-trace",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "dist/index.js",
   "scripts": {
-    "postinstall": "babel src -d dist",
+    "prepublish": "babel src -d dist",
     "install": "node-gyp rebuild"
   },
   "author": "wangchao",
