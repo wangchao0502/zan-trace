@@ -1,0 +1,26 @@
+{
+  "name": "zan-trace",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "postinstall": "babel src -d dist",
+    "install": "node-gyp rebuild"
+  },
+  "author": "wangchao",
+  "license": "ISC",
+  "keywords": [
+    "Node",
+    "trace"
+  ],
+  "description": "Node trace info collector",
+  "dependencies": {
+    "memwatch-next": "~0.3.0",
+    "node-gyp": "~3.6.1",
+    "v8-profiler": "~5.7.0"
+  },
+  "devDependencies": {
+    "babel-cli": "~6.24.1",
+    "babel-preset-env": "~1.4.0",
+    "babel-register": "~6.24.1"
+  }
+}
