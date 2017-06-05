@@ -36,8 +36,8 @@ const profiler = require('v8-profiler');
 const memwatch = require('memwatch-next');
 const trace = require('../build/Release/zan-trace');
 
-const cwd = process.cwd();
 const ENV = process.env.NODE_ENV;
+const SAVEDIR = process.env.TRACE_DIR || '/tmp';
 
 let gcstats = {};
 
@@ -71,7 +71,7 @@ const snapshot = (ctx) => {
     const name = `snapshot_${Date.now()}.heapsnapshot`;
     const snapshot = profiler.takeSnapshot(name);
     snapshot.export((error, result) => {
-        fs.writeFile(`${cwd}/static/${name}`, result, (err) => {
+        fs.writeFile(`${SAVEDIR}/${name}`, result, (err) => {
             if (err) throw err;
             snapshot.delete();
         });
@@ -91,7 +91,7 @@ const profile = (ctx) => {
     setTimeout(() => {
         const profile = profiler.stopProfiling(name);
         profile.export((error, result) => {
-            fs.writeFile(`${cwd}/static/${name}`, result, (err) => {
+            fs.writeFile(`${SAVEDIR}/${name}`, result, (err) => {
                 if (err) throw err;
                 profile.delete();
             });
