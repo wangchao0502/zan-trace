@@ -33,10 +33,11 @@ const os = require('os');
 const fs = require('fs');
 const util = require('util');
 const profiler = require('v8-profiler');
-const nodereport = require('node-report');
 const memwatch = require('memwatch-next');
 const trace = require('../build/Release/zan-trace');
+
 const cwd = process.cwd();
+const ENV = process.env.NODE_ENV;
 
 let gcstats = {};
 
@@ -216,7 +217,10 @@ module.exports = async (ctx, next) => {
                 };
                 break;
             case 'report':
-                perf = nodereport.getReport();
+                // dev environment will make nodemon unwork
+                if (ENV === 'production') {
+                    perf = require('node-report').getReport();
+                }
                 break;
             case 'test':
                 fs.access(__filename, () => console.log('access this file'));
