@@ -30,78 +30,19 @@
  */
 
 const os = require('os');
-const fs = require('fs');
 const util = require('util');
-const profiler = require('v8-profiler');
 const memwatch = require('memwatch-next');
+const cpu = require('./lib/cpu');
+const profile = require('./lib/cpu_profile');
+const snapshot = require('./lib/heap_snapshot');
 const trace = require('../build/Release/zan-trace');
 
 const ENV = process.env.NODE_ENV;
-const SAVEDIR = process.env.TRACE_DIR || '/tmp';
 
 let gcstats = {};
 
 const init = () => {
     memwatch.on('stats', stats => gcstats = stats);
-};
-
-const cpu = () => {
-    let result = {};
-    const cpus = os.cpus();
-
-    for (let i = 0, len = cpus.length; i < len; i++) {
-        const cpu = cpus[i];
-        let total = 0;
-
-        for (const type in cpu.times) {
-            total += cpu.times[type];
-        }
-
-        for (const type in cpu.times) {
-            if (!result[type]) result[type] = 0;
-            result[type] += 100 * cpu.times[type] / total;
-        }
-    }
-
-    Object.keys(result).forEach(key => result[key] /= cpus.length);
-    return result;
-};
-
-const snapshot = (ctx) => {
-    const name = `snapshot_${Date.now()}.heapsnapshot`;
-    const snapshot = profiler.takeSnapshot(name);
-    snapshot.export((error, result) => {
-        fs.writeFile(`${SAVEDIR}/${name}`, result, (err) => {
-            if (err) throw err;
-            snapshot.delete();
-        });
-    });
-
-    return {
-        filename: name,
-        msg: 'Please download snapshot file several seconds later'
-    };
-};
-
-const profile = (ctx) => {
-    const name = `profile_${Date.now()}.cpuprofile`;
-    const duration = ctx.request.query.duration || 1000;
-
-    profiler.startProfiling(name);
-    setTimeout(() => {
-        const profile = profiler.stopProfiling(name);
-        profile.export((error, result) => {
-            fs.writeFile(`${SAVEDIR}/${name}`, result, (err) => {
-                if (err) throw err;
-                profile.delete();
-            });
-        });
-    }, duration);
-
-    return {
-        filename: name,
-        msg: `Please download profile file ${duration}ms later`
-    };
 };
 
 init();
@@ -114,28 +55,7 @@ module.exports = async (ctx, next) => {
         const type = pathname.replace('/perf/', '');
         switch (type) {
             case 'help':
-                perf = {
-                    arch: 'Operating system CPU architecture for which the Node.js binary was compiled.',
-                    platform: 'Operating system platform as set during compile time of Node.js.',
-                    endianness: 'Return the endianness of the CPU for which the Node.js binary was compiled.',
-                    uptime: 'System uptime in number of seconds.',
-                    release: 'Operating system release.',
-                    type: 'Operating system name',
-                    user: 'Return information about the currently effective user.',
-                    cpus: 'Return an array of objects containing information about each CPU/core installed.',
-                    cpu: 'Current CPU load.',
-                    totalmem: 'Total amount of system in bytes.',
-                    freemem: 'Amount of free system memory in bytes.',
-                    memory: 'Returns an object describing the memory usage of the Node.js process measured in bytes.',
-                    gc: 'Return gc space info.',
-                    snapshot: 'Generate heap snapshot record file.',
-                    profile: 'Generate cpu profile record file.',
-                    forcegc: 'Manually excute gc.',
-                    version: 'Return an object describing the versions of node deps.',
-                    pid: 'Return PID of this application.',
-                    memwatch: 'Record gc count.',
-                    report: 'Get human-readable diagnostic summary'
-                };
+                perf = require('./config/intro');
                 break;
             case 'arch':
                 perf = os.arch();
@@ -223,7 +143,6 @@ module.exports = async (ctx, next) => {
                 }
                 break;
             case 'test':
-                fs.access(__filename, () => console.log('access this file'));
                 break;
             case 'snapshot':
                 perf = snapshot(ctx);
@@ -237,11 +156,6 @@ module.exports = async (ctx, next) => {
             case 'forcegc':
                 memwatch.gc();
                 perf = 'success';
-                break;
-            case 'enable_aysnc_hook':
-                // waiting for node async_hooks api support
-                break;
-            case 'disable_async_hook':
                 break;
         }
 
