@@ -40,9 +40,11 @@ const trace = require('../build/Release/zan-trace');
 const ENV = process.env.NODE_ENV;
 
 let gcstats = {};
+let moduleDepts = {};
 
 const init = () => {
     memwatch.on('stats', stats => gcstats = stats);
+    moduleDepts = {};
 };
 
 init();
@@ -143,6 +145,9 @@ module.exports = async (ctx, next) => {
                 }
                 break;
             case 'test':
+                break;
+            case 'module':
+                perf = moduleDepts;
                 break;
             case 'snapshot':
                 perf = snapshot(ctx);

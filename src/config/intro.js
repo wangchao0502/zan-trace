@@ -18,5 +18,6 @@ module.exports = {
     version: 'Return an object describing the versions of node deps.',
     pid: 'Return PID of this application.',
     memwatch: 'Record gc count.',
-    report: 'Get human-readable diagnostic summary'
+    report: 'Get human-readable diagnostic summary.',
+    module: 'Get dependency tree of modules.',
 };
