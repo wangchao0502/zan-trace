@@ -40,6 +40,7 @@ const cpu = require('./lib/cpu');
 const profile = require('./lib/cpu_profile');
 const snapshot = require('./lib/heap_snapshot');
 const trace = require('../build/Release/zan-trace');
+const moduleTree = require('./lib/module_tree');
 
 const ENV = process.env.NODE_ENV;
 
@@ -48,7 +49,7 @@ let moduleDepts = {};
 
 const init = () => {
     memwatch.on('stats', stats => gcstats = stats);
-    moduleDepts = {};
+    moduleTree(data => console.log(JSON.stringify(data, null, '  ')));
 };
 
 init();
