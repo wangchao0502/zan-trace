@@ -96,6 +96,8 @@ let graph = new Graph();
 let loadedMap = {};
 let ready = false;
 
+const DEFAULT_VERSION = '0.0.0';
+
 function printNodes() {
     Object.keys(loadedMap).forEach(key => {
         const nodes = loadedMap[key];
@@ -182,7 +184,7 @@ function loadNodeInfo(pkg) {
     const node = new Node();
 
     node.name = pkg.name;
-    node.version = pkg.version;
+    node.version = pkg.version || DEFAULT_VERSION;
     node.key = `${node.name}@${node.version}`;
     // production only
     node.dependencies = pkg.dependencies;
@@ -247,7 +249,7 @@ function packageFind() {
         // add main dependency
         readPkg(pkgPath, pkg => {
             rootModuleName = pkg.name;
-            rootModuleVersion = pkg.version || '0.0.0';
+            rootModuleVersion = pkg.version || DEFAULT_VERSION;
             loadNodeInfo(pkg);
         });
     }
@@ -267,9 +269,16 @@ function getTree() {
 try {
     packageFind();
     readDeptList(nodeModulesPath);
-    setTimeout(generateGraph, 2000);
 } catch (err) {
     console.error(err);
 }
+
+setTimeout(() => {
+    try {
+        generateGraph();
+    } catch (err) {
+        console.error(err);
+    }
+}, 2000);
 
 module.exports = getTree;
