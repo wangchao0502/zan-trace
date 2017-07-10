@@ -96,8 +96,6 @@ let graph = new Graph();
 let loadedMap = {};
 let ready = false;
 
-const DEFAULT_VERSION = '0.0.0';
-
 function printNodes() {
     Object.keys(loadedMap).forEach(key => {
         const nodes = loadedMap[key];
@@ -184,7 +182,7 @@ function loadNodeInfo(pkg) {
     const node = new Node();
 
     node.name = pkg.name;
-    node.version = pkg.version || DEFAULT_VERSION;
+    node.version = pkg.version;
     node.key = `${node.name}@${node.version}`;
     // production only
     node.dependencies = pkg.dependencies;
@@ -232,13 +230,14 @@ function readDeptListPromisify(modulePath) {
 function readDeptList(modulePath) {
     if (!modulePath) return;
 
-    const files = fs.readdirSync(modulePath);
+    const files = fs.readdirSync(modulePath).filter(x => x.charAt(0) !== '.');
+    const subModulePath = [...files.filter(x => x.charAt(0) === '@').map(x => fs.readdirSync(path.join(modulePath, x)).map(y => `${x}/${y}`)).join().split(','), ...files.filter(x => x.charAt(0) !== '@')];
 
-    Promise.all(files.filter(x => x.charAt(0) !== '.').map(file => readDeptListPromisify(path.join(modulePath, file)))).then(modulePaths => modulePaths.filter(x => !!x).forEach(x => readDeptList(x))).catch(err => console.log(err));
+    Promise.all(subModulePath.map(file => readDeptListPromisify(path.join(modulePath, file)))).then(modulePaths => modulePaths.filter(x => !!x).forEach(x => readDeptList(x))).catch(err => console.log(err));
 }
 
 function packageFind() {
-    const dir = process.cwd();
+    const dir = path.dirname(require.main.filename);
     const pkgPath = path.join(dir, 'package.json');
 
     if (fs.existsSync(pkgPath)) {
@@ -249,7 +248,7 @@ function packageFind() {
         // add main dependency
         readPkg(pkgPath, pkg => {
             rootModuleName = pkg.name;
-            rootModuleVersion = pkg.version || DEFAULT_VERSION;
+            rootModuleVersion = pkg.version || '0.0.0';
             loadNodeInfo(pkg);
         });
     }
@@ -277,7 +276,7 @@ setTimeout(() => {
     try {
         generateGraph();
     } catch (err) {
-        console.error(err);
+        console;
     }
 }, 2000);
 
