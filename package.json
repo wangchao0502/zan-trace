@@ -1,6 +1,6 @@
 {
   "name": "zan-trace",
-  "version": "0.2.4",
+  "version": "0.2.5g",
   "main": "dist/index.js",
   "scripts": {
     "prepublish": "babel src -d dist",

@@ -233,7 +233,7 @@ function readDeptList(modulePath) {
 }
 
 function packageFind() {
-    const dir = path.dirname(require.main.filename);
+    const dir = process.cwd();
     const pkgPath = path.join(dir, 'package.json');
 
     if (fs.existsSync(pkgPath)) {
