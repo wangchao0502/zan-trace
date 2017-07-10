@@ -1,6 +1,6 @@
 {
   "name": "zan-trace",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "main": "dist/index.js",
   "scripts": {
     "prepublish": "babel src -d dist",
@@ -17,6 +17,7 @@
     "memwatch-next": "~0.3.0",
     "node-gyp": "~3.6.1",
     "node-report": "~2.2.0",
+    "semver": "~5.3.0",
     "v8-profiler": "~5.7.0"
   },
   "devDependencies": {

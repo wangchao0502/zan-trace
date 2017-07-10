@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zan-trace</title>
+    <script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/echarts/3.6.2/echarts.min.js"></script>
+    <style>
+        html,
+        body {
+            height: 100%;
+        }
+        #main {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="main"></div>
+    <script type="text/javascript">
+        // 基于准备好的dom，初始化echarts实例
+        const myChart = echarts.init(document.getElementById('main'));
+        const MAX_SIZE = 80;
+        const MIN_SIZE = 12;
+
+        let sizeStep = 0;
+
+        const initConfig = nodes => {
+            const minLevel = 0;
+            const maxLevel = Math.max.apply(null, nodes.map(x => x.level));
+            sizeStep = (MAX_SIZE - MIN_SIZE) / maxLevel;
+        };
+        const getSymbolSize = level => MAX_SIZE - sizeStep * level;
+        const getColor = () => '#' + (0x1000000 + (Math.random()) * 0xffffff).toString(16).substr(1, 6);
+
+        myChart.showLoading();
+        $.getJSON('/perf/module', (json) => {
+            initConfig(json.nodes);
+
+            myChart.hideLoading();
+            myChart.setOption(option = {
+                title: {
+                    text: 'NPM Dependencies'
+                },
+                animationDurationUpdate: 1500,
+                animationEasingUpdate: 'quinticInOut',
+                series : [{
+                    type: 'graph',
+                    layout: 'force',
+                    // progressiveThreshold: 700,
+                    data: json.nodes.map(node => ({
+                        id: node.key,
+                        name: node.key,
+                        symbolSize: getSymbolSize(node.level),
+                        itemStyle: {
+                            normal: {
+                                color: getColor()
+                            }
+                        }
+                    })),
+                    edges: json.edges.map(edge => ({ source: edge.from, target: edge.to })),
+                    label: {
+                        emphasis: {
+                            position: 'right',
+                            show: true
+                        }
+                    },
+                    force: {
+                        edgeLength: MAX_SIZE * 2,
+                        repulsion: 100
+                    },
+                    roam: true,
+                    focusNodeAdjacency: true,
+                    lineStyle: {
+                        normal: {
+                            width: 0.5,
+                            curveness: 0.3,
+                            opacity: 0.7
+                        }
+                    }
+                }]
+            }, true);
+        });
+    </script>
+</body>
+</html>

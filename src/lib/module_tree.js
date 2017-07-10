@@ -1,15 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-
-let projectPath;
-let nodeModulesPath;
-let packageJsonPath;
-let loaded = new Set();
-/**
- * key: package name
- * value: array<Node>
- */
-let loadedMap = {};
+const semverParser = require('semver');
 
 const Dictionary = function() {
     this.items = {};
@@ -17,8 +8,17 @@ const Dictionary = function() {
 
 Dictionary.prototype.set = function(key, value) { this.items[key] = value }
 Dictionary.prototype.has = function(key) { return this.items.hasOwnProperty(key) }
-Dictionary.prototype.get = function(key) { return this.has(key) ? items[key] : undefined }
+Dictionary.prototype.get = function(key) { return this.has(key) ? this.items[key] : undefined }
+Dictionary.prototype.toArray = function () {
+    const arr = [];
+    Object.keys(this.items).forEach(key => {
+        const targets = this.items[key] || [];
+        targets.forEach(target => arr.push({ from: key, to: target }));
+    });
+    return arr;
+}
 
+// vertices名称为 包名@version
 const Graph = function() {
     // 存储图中所有的顶点
     this.vertices = [];
@@ -30,7 +30,11 @@ const Graph = function() {
 Graph.prototype.addVertex = function(v) {
     this.vertices.push(v);
     // 顶点为键，字典值为空数组
-    this.adjList.set(v, []);
+    this.adjList.set(v.key, []);
+}
+// 存在顶点
+Graph.prototype.hasVertex = function(v) {
+    return this.vertices.find(x => x.key === v);
 }
 // 添加边
 Graph.prototype.addEdge = function(v, w) { this.adjList.get(v).push(w) }
@@ -46,13 +50,20 @@ Graph.prototype.toString = function() {
     }
     return s;
 }
+Graph.prototype.toJSON = function() {
+    return {
+        nodes: this.vertices,
+        edges: this.adjList.toArray()
+    }
+}
 
 const Node = function() {
+    this.key = '';
     this.name = '';
     this.version = '';
+    this.level = 0;
     this.dependencies = [];
 }
-Node.prototype.getKey = function() { return `${this.name}@${this.version}` }
 Node.prototype.getValue = function() {
     return {
         name: this.name,
@@ -60,11 +71,20 @@ Node.prototype.getValue = function() {
         dependencies: this.dependencies
     };
 }
-Node.prototype.parseSemver = function() {
-    if (!this.semver) throw new Error('empty semver');
 
-
-}
+let rootModuleName;
+let rootModuleVersion;
+let projectPath;
+let nodeModulesPath;
+let packageJsonPath;
+let loaded = new Set();
+let graph = new Graph();
+/**
+ * key: package name
+ * value: array<Node>
+ */
+let loadedMap = {};
+let ready = false;
 
 function printNodes() {
     Object.keys(loadedMap).forEach(key => {
@@ -79,18 +99,87 @@ function printNodes() {
     });
 }
 
+function printDependencyTree() {
+    console.log(graph.toString());
+}
+
+function generateGraph() {
+    // console.log(loaded);
+    // console.log(loadedMap);
+
+    const copyLoadedSet = new Set(loaded);
+    const findNode = (name, version) => {
+        const nodes = loadedMap[name];
+        if (nodes && nodes.length) {
+            return nodes.find(x => x.version === version);
+        }
+        return null;
+    };
+    const findFitSemverNode = (name, semver) => {
+        const nodes = loadedMap[name];
+        if (nodes && nodes.length) {
+            const versions = nodes.map(x => x.version);
+            const maxSatisfyingVersion = semverParser.maxSatisfying(versions, semver);
+            return nodes.find(x => x.version === maxSatisfyingVersion);
+        }
+        return null;
+    };
+
+    // init root node
+    const root = findNode(rootModuleName, rootModuleVersion);
+    const stack = [root];
+
+    root.level = 0;
+    graph.addVertex(root);
+
+    while (stack.length) {
+        const cur = stack.pop();
+        const fromKey = cur.key;
+        const name = cur.name;
+        const version = cur.version;
+        const node = findNode(name, version);
+
+        let dept;
+
+        if (!copyLoadedSet.has(fromKey)) continue;
+        copyLoadedSet.delete(fromKey);
+
+        if (node && (dept = node.dependencies)) {
+            // add node connect dependency edge
+            Object.keys(dept).forEach(name => {
+                const semver = dept[name];
+                const node = findFitSemverNode(name, semver);
+                const toKey = node.key;
+
+                node.level = cur.level + 1;
+
+                if (!graph.hasVertex(toKey)) {
+                    // add vertex
+                    graph.addVertex(node);
+                    // add addEdge
+                    graph.addEdge(fromKey, toKey);
+                    // add into stack
+                    stack.push(node);
+                }
+            });
+        }
+    }
+
+    ready = true;
+}
+
 function loadNodeInfo(pkg) {
     const node = new Node();
 
     node.name = pkg.name;
     node.version = pkg.version;
+    node.key = `${node.name}@${node.version}`;
+    // production only
     node.dependencies = pkg.dependencies;
 
-    const key = node.getKey();
+    if (loaded.has(node.key)) return false;
 
-    if (loaded.has(key)) return false;
-
-    loaded.add(key);
+    loaded.add(node.key);
 
     if (loadedMap[node.name]) loadedMap[node.name].push(node);
     else loadedMap[node.name] = [node];
@@ -135,7 +224,6 @@ function readDeptList(modulePath) {
 
     const files = fs.readdirSync(modulePath);
 
-    console.log(modulePath, files);
     Promise
         .all(files.filter(x => x.charAt(0) !== '.').map(file => readDeptListPromisify(path.join(modulePath, file))))
         .then(modulePaths => modulePaths.filter(x => !!x).forEach(x => readDeptList(x)))
@@ -152,7 +240,11 @@ function packageFind() {
         nodeModulesPath = path.join(projectPath, 'node_modules');
 
         // add main dependency
-        readPkg(pkgPath, pkg => loadNodeInfo(pkg));
+        readPkg(pkgPath, pkg => {
+            rootModuleName = pkg.name;
+            rootModuleVersion = pkg.version || '0.0.0';
+            loadNodeInfo(pkg)
+        });
     }
 }
 
@@ -162,10 +254,17 @@ function readPkg(pkgPath, cb) {
     });
 }
 
-function getTree(cb) {
+function getTree() {
+    if (ready) return graph.toJSON();
+    return null;
+}
+
+try {
     packageFind();
     readDeptList(nodeModulesPath);
-    setTimeout(printNodes, 1000);
+    setTimeout(generateGraph, 2000);
+} catch (err) {
+    console.error(err);
 }
 
 module.exports = getTree;
