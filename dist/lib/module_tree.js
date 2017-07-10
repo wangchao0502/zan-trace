@@ -161,19 +161,25 @@ function generateGraph() {
             Object.keys(dept).forEach(name => {
                 const semver = dept[name];
                 const node = findFitSemverNode(name, semver);
-                const toKey = node.key;
 
-                node.level = cur.level + 1;
+                if (node) {
+                    const toKey = node.key;
+                    node.level = cur.level + 1;
 
-                if (!graph.hasVertex(toKey)) {
-                    // add vertex
-                    graph.addVertex(node);
-                    // add addEdge
-                    graph.addEdge(fromKey, toKey);
-                    // add into stack
-                    stack.push(node);
+                    if (!graph.hasVertex(toKey)) {
+                        // add vertex
+                        graph.addVertex(node);
+                        // add addEdge
+                        graph.addEdge(fromKey, toKey);
+                        // add into stack
+                        stack.push(node);
+                    }
+                } else {
+                    console.warn(`Packge ${name} is behind version ${semver}, please execute 'npm update ${name}'`);
                 }
             });
+        } else {
+            console.warn(`Packge ${name} is not installed, please execute 'npm install ${name}'`);
         }
     }
 
