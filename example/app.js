@@ -3,7 +3,7 @@ const Koa = require('koa');
 const path = require('path');
 const Router = require('koa-router');
 const body = require('koa-body')();
-const trace = require('../src/index');
+const trace = require('zan-trace');
 
 const app = new Koa();
 const router = new Router();
