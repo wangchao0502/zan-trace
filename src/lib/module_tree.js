@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const semverParser = require('semver');
+const util = require('util');
+const debuglog = util.debuglog('zan-trace');
 
 const Dictionary = function() {
     this.items = {};
@@ -141,12 +143,13 @@ function generateGraph() {
         const version = cur.version;
         const node = findNode(name, version);
 
-        let dept;
-
         if (!copyLoadedSet.has(fromKey)) continue;
         copyLoadedSet.delete(fromKey);
 
-        if (node && (dept = node.dependencies)) {
+        if (node) {
+            const dept = node.dependencies;
+            if (!dept) continue;
+
             // add node connect dependency edge
             Object.keys(dept).forEach(name => {
                 const semver = dept[name];
@@ -165,11 +168,11 @@ function generateGraph() {
                         stack.push(node);
                     }
                 } else {
-                    console.warn(`Packge ${name} is behind version ${semver}, please execute 'npm update ${name}'`);
+                    debuglog(`Packge ${name} is behind version ${semver}, please execute 'npm update ${name}'`);
                 }
             });
         } else {
-            console.warn(`Packge ${name} is not installed, please execute 'npm install ${name}'`);
+            debuglog(`Packge ${name} is not installed, please execute 'npm install ${name}'`);
         }
     }
 
