@@ -3,6 +3,7 @@ const path = require('path');
 const semverParser = require('semver');
 const util = require('util');
 const debuglog = util.debuglog('zan-trace');
+const fsAsync = require('../helper/fileAsync');
 
 const Dictionary = function() {
     this.items = {};
@@ -198,39 +199,23 @@ function loadNodeInfo(pkg) {
     return true;
 }
 
-/**
- * load dependencies and return node_modules path
- * @returns {Promise}
- */
-function readDeptListPromisify(modulePath) {
-    return new Promise((resolve, reject) => {
-        fs.stat(modulePath, (err, stat) => {
-            if (!err && stat.isDirectory()) {
-                // read pkg
-                const pkgPath = path.join(modulePath, 'package.json');
+// load dependencies and return node_modules path
+async function getSubModulePath(modulePath) {
+    const isDir = await fsAsync.isDir(modulePath);
+    if (!isDir) return null;
 
-                readPkg(pkgPath, pkg => {
-                    if (!loadNodeInfo(pkg)) {
-                        resolve('');
-                        return;
-                    }
+    const pkg = await readPkg(path.join(modulePath, 'package.json'));
+    if (!loadNodeInfo(pkg)) return null;
 
-                    // if has node_modules dir
-                    const subModulePath = path.join(modulePath, 'node_modules');
+    const subModulePath = path.join(modulePath, 'node_modules');
+    const isSubModuleDir = await fsAsync.isDir(subModulePath);
+    
+    if (isSubModuleDir) return subModulePath;
 
-                    fs.stat(subModulePath, (err, stat) => {
-                        if (!err && stat.isDirectory()) resolve(subModulePath);
-                        else resolve('');
-                    });
-                });
-            } else {
-                resolve('');
-            }
-        });
-    });
+    return null;
 }
 
-function readDeptList(modulePath) {
+async function readDeptList(modulePath) {
     if (!modulePath) return;
 
     const files = fs.readdirSync(modulePath).filter(x => x.charAt(0) !== '.');
@@ -243,13 +228,15 @@ function readDeptList(modulePath) {
         ...files.filter(x => x.charAt(0) !== '@')
     ];
 
-    Promise
-        .all(subModulePath.map(file => readDeptListPromisify(path.join(modulePath, file))))
-        .then(modulePaths => modulePaths.filter(x => !!x).forEach(x => readDeptList(x)))
-        .catch(err => console.log(err));
+    try {
+        const modulePaths = await Promise.all(subModulePath.map(file => getSubModulePath(path.join(modulePath, file))));
+        await Promise.all(modulePaths.filter(x => !!x).map(x => readDeptList(x)));
+    } catch (err) {
+        console.log(err);
+    }
 }
 
-function packageFind() {
+async function packageFind() {
     const dir = process.cwd();
     const pkgPath = path.join(dir, 'package.json');
 
@@ -259,18 +246,18 @@ function packageFind() {
         nodeModulesPath = path.join(projectPath, 'node_modules');
 
         // add main dependency
-        readPkg(pkgPath, pkg => {
-            rootModuleName = pkg.name;
-            rootModuleVersion = pkg.version || DEFAULT_VERSION;
-            loadNodeInfo(pkg)
-        });
+        const pkg = await readPkg(pkgPath);
+
+        rootModuleName = pkg.name;
+        rootModuleVersion = pkg.version || DEFAULT_VERSION;
+        loadNodeInfo(pkg)
     }
 }
 
-function readPkg(pkgPath, cb) {
-    fs.readFile(pkgPath, (err, data) => {
-        if (!err) cb(JSON.parse(data.toString()));
-    });
+async function readPkg(pkgPath) {
+    const data = await fsAsync.read(pkgPath);
+    if (data) return JSON.parse(data);
+    return {};
 }
 
 function getTree() {
@@ -278,19 +265,15 @@ function getTree() {
     return null;
 }
 
-try {
-    packageFind();
-    readDeptList(nodeModulesPath);
-} catch (err) {
-    console.error(err);
-}
-
-setTimeout(() => {
+(async () => {
     try {
+        await packageFind();
+        await readDeptList(nodeModulesPath);
+        // console.log(JSON.stringify(loadedMap, null, '  '));
         generateGraph();
     } catch(err) {
-        console.error(err);
+        console.log(err);
     }
-}, 2000);
+})();
 
 module.exports = getTree;

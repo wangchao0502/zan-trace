@@ -1,10 +1,107 @@
 'use strict';
 
+// load dependencies and return node_modules path
+let getSubModulePath = (() => {
+    var _ref = _asyncToGenerator(function* (modulePath) {
+        const isDir = yield fsAsync.isDir(modulePath);
+        if (!isDir) return null;
+
+        const pkg = yield readPkg(path.join(modulePath, 'package.json'));
+        if (!loadNodeInfo(pkg)) return null;
+
+        const subModulePath = path.join(modulePath, 'node_modules');
+        const isSubModuleDir = yield fsAsync.isDir(subModulePath);
+
+        if (isSubModuleDir) return subModulePath;
+
+        return null;
+    });
+
+    return function getSubModulePath(_x) {
+        return _ref.apply(this, arguments);
+    };
+})();
+
+let readDeptList = (() => {
+    var _ref2 = _asyncToGenerator(function* (modulePath) {
+        if (!modulePath) return;
+
+        const files = fs.readdirSync(modulePath).filter(function (x) {
+            return x.charAt(0) !== '.';
+        });
+        const subModulePath = [...files.filter(function (x) {
+            return x.charAt(0) === '@';
+        }).map(function (x) {
+            return fs.readdirSync(path.join(modulePath, x)).map(function (y) {
+                return `${x}/${y}`;
+            });
+        }).join().split(','), ...files.filter(function (x) {
+            return x.charAt(0) !== '@';
+        })];
+
+        try {
+            const modulePaths = yield Promise.all(subModulePath.map(function (file) {
+                return getSubModulePath(path.join(modulePath, file));
+            }));
+            yield Promise.all(modulePaths.filter(function (x) {
+                return !!x;
+            }).map(function (x) {
+                return readDeptList(x);
+            }));
+        } catch (err) {
+            console.log(err);
+        }
+    });
+
+    return function readDeptList(_x2) {
+        return _ref2.apply(this, arguments);
+    };
+})();
+
+let packageFind = (() => {
+    var _ref3 = _asyncToGenerator(function* () {
+        const dir = process.cwd();
+        const pkgPath = path.join(dir, 'package.json');
+
+        if (fs.existsSync(pkgPath)) {
+            projectPath = dir;
+            packageJsonPath = pkgPath;
+            nodeModulesPath = path.join(projectPath, 'node_modules');
+
+            // add main dependency
+            const pkg = yield readPkg(pkgPath);
+
+            rootModuleName = pkg.name;
+            rootModuleVersion = pkg.version || DEFAULT_VERSION;
+            loadNodeInfo(pkg);
+        }
+    });
+
+    return function packageFind() {
+        return _ref3.apply(this, arguments);
+    };
+})();
+
+let readPkg = (() => {
+    var _ref4 = _asyncToGenerator(function* (pkgPath) {
+        const data = yield fsAsync.read(pkgPath);
+        if (data) return JSON.parse(data);
+        return {};
+    });
+
+    return function readPkg(_x3) {
+        return _ref4.apply(this, arguments);
+    };
+})();
+
+function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
+
 const fs = require('fs');
 const path = require('path');
 const semverParser = require('semver');
 const util = require('util');
 const debuglog = util.debuglog('zan-trace');
+const fsAsync = require('../helper/fileAsync');
 
 const Dictionary = function Dictionary() {
     this.items = {};
@@ -207,88 +304,20 @@ function loadNodeInfo(pkg) {
     return true;
 }
 
-/**
- * load dependencies and return node_modules path
- * @returns {Promise}
- */
-function readDeptListPromisify(modulePath) {
-    return new Promise((resolve, reject) => {
-        fs.stat(modulePath, (err, stat) => {
-            if (!err && stat.isDirectory()) {
-                // read pkg
-                const pkgPath = path.join(modulePath, 'package.json');
-
-                readPkg(pkgPath, pkg => {
-                    if (!loadNodeInfo(pkg)) {
-                        resolve('');
-                        return;
-                    }
-
-                    // if has node_modules dir
-                    const subModulePath = path.join(modulePath, 'node_modules');
-
-                    fs.stat(subModulePath, (err, stat) => {
-                        if (!err && stat.isDirectory()) resolve(subModulePath);else resolve('');
-                    });
-                });
-            } else {
-                resolve('');
-            }
-        });
-    });
-}
-
-function readDeptList(modulePath) {
-    if (!modulePath) return;
-
-    const files = fs.readdirSync(modulePath).filter(x => x.charAt(0) !== '.');
-    const subModulePath = [...files.filter(x => x.charAt(0) === '@').map(x => fs.readdirSync(path.join(modulePath, x)).map(y => `${x}/${y}`)).join().split(','), ...files.filter(x => x.charAt(0) !== '@')];
-
-    Promise.all(subModulePath.map(file => readDeptListPromisify(path.join(modulePath, file)))).then(modulePaths => modulePaths.filter(x => !!x).forEach(x => readDeptList(x))).catch(err => console.log(err));
-}
-
-function packageFind() {
-    const dir = process.cwd();
-    const pkgPath = path.join(dir, 'package.json');
-
-    if (fs.existsSync(pkgPath)) {
-        projectPath = dir;
-        packageJsonPath = pkgPath;
-        nodeModulesPath = path.join(projectPath, 'node_modules');
-
-        // add main dependency
-        readPkg(pkgPath, pkg => {
-            rootModuleName = pkg.name;
-            rootModuleVersion = pkg.version || DEFAULT_VERSION;
-            loadNodeInfo(pkg);
-        });
-    }
-}
-
-function readPkg(pkgPath, cb) {
-    fs.readFile(pkgPath, (err, data) => {
-        if (!err) cb(JSON.parse(data.toString()));
-    });
-}
-
 function getTree() {
     if (ready) return graph.toJSON();
     return null;
 }
 
-try {
-    packageFind();
-    readDeptList(nodeModulesPath);
-} catch (err) {
-    console.error(err);
-}
-
-setTimeout(() => {
+_asyncToGenerator(function* () {
     try {
+        yield packageFind();
+        yield readDeptList(nodeModulesPath);
+        // console.log(JSON.stringify(loadedMap, null, '  '));
         generateGraph();
     } catch (err) {
-        console.error(err);
+        console.log(err);
     }
-}, 2000);
+})();
 
 module.exports = getTree;
