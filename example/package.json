@@ -14,11 +14,10 @@
     "babel-plugin-transform-runtime": "~6.23.0",
     "babel-preset-env": "~1.5.1",
     "babel-register": "~6.24.1",
-    "json5": "~0.1.0",
     "koa": "~2.2.0",
     "koa-body": "~2.3.0",
     "koa-generator": "~1.1.15",
     "koa-router": "~7.2.1",
-    "zan-trace": "~0.2.10"
+    "zan-trace": "~0.3.1"
   }
 }
