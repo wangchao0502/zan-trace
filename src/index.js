@@ -159,6 +159,9 @@ module.exports = async (ctx, next) => {
                 memwatch.gc();
                 perf = 'success';
                 break;
+            case 'ping':
+                perf = 'pong';
+                break;
         }
 
         ctx.body = perf;

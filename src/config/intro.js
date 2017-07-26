@@ -20,4 +20,5 @@ module.exports = {
     memwatch: 'Record gc count.',
     report: 'Get human-readable diagnostic summary.',
     module: 'Get dependency tree of modules.',
+    ping: 'return pong if alive',
 };
